@@ -16,8 +16,7 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+	return !system(cmd);
 }
 
 /**
@@ -47,7 +46,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 /*
  * TODO:
@@ -59,10 +58,38 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
+    	va_end(args);
+	fflush(stdout);
 
-    return true;
+	pid_t p = fork();
+	if (p < 0)
+	{
+		perror("fork failed");
+		return 1;
+	}
+
+	else if (p == 0)
+	{
+		//Will only return if failed
+		execv(command[0], command);
+		//_exit for children with exec, otherwise exit. Diff is exit() invoke _exit() with other stuff like flushing buffer and atexit
+		_exit(EXIT_FAILURE);
+	}
+	else
+	{
+		int wstatus;
+		wait(&wstatus);
+		//Do not check for raw value of wstatus, it encode both the code and reason. Check if exited and then the status
+		if (WIFEXITED(wstatus))
+			return !WEXITSTATUS(wstatus);
+		else
+		{
+			perror("Did not exit normally");
+			return 1;
+		}
+	}
 }
+
 
 /**
 * @param outputfile - The full path to the file to write with command output.
@@ -82,8 +109,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
-
+    //command[count] = command[count];
 
 /*
  * TODO
@@ -93,7 +119,46 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
-    va_end(args);
+	va_end(args);
 
-    return true;
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0)
+	{
+		perror("failed to open outputfile");
+		return 1;
+	}
+
+	fflush(stdout);
+	pid_t p = fork();
+	if (p < 0)
+	{
+		perror("fork failed");
+		return 1;
+	}
+
+	else if (p == 0)
+	{
+		dup2(fd, 1);
+		if (dup2(fd, 1) < 0)
+		{
+			perror("dup2 failed");
+			return 1;
+		}
+		execv(command[0], command);
+		_exit(EXIT_FAILURE);
+	}
+	else
+	{
+		close(fd);
+		int wstatus;
+		wait(&wstatus);
+
+		if (WIFEXITED(wstatus))
+			return !WEXITSTATUS(wstatus);
+		else
+		{
+			perror("Did not exit normally");
+			return 1;
+		}
+	}
 }
