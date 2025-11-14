@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 
-if (( $# == 2 )); then
+if [ "$#" -eq 2 ]; then
 	filesdir=$1
 	searchstr=$2
 else
@@ -10,11 +10,11 @@ else
 fi
 
 
-if [[ ! -d "$filesdir" ]]; then
+if [ ! -d "$filesdir" ]; then
 	echo "First argument is not a dir. Exiting"
 	exit 1
 fi
-file_names=$(find $filesdir -type f -printf "%f\n")
+file_names=$(find $filesdir -type f)
 X=$(echo "$file_names" | wc -l)
 Y=$(grep -R "$filesdir" -e "$searchstr" | wc -l)
 printf "The number of files are %s and the number of matching lines are %s\n" $X "${Y:=0}"
